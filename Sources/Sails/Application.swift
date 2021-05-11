@@ -79,11 +79,14 @@ class FunctionHandler: ChannelInboundHandler {
     response.response(on: context.eventLoop).whenSuccess { response in
       let contentLength = try! response.content.encode(to: &buffer)
 
+      var headers = response.head.headers
+      headers.add(name: "Content-Length", value: String(contentLength))
+
       let head = HTTPServerResponsePart.head(
         HTTPResponseHead(
           version: HTTPVersion(major: 1, minor: 1),
           status: response.head.status,
-          headers: ["Content-Length": "\(contentLength)"]
+            headers: headers
         )
       )
 

@@ -163,6 +163,23 @@ class SailsTests: XCTestCase {
     try! client.syncShutdown()
   }
 
+  func test_requestHandlerCanSpecifyHeaders() {
+    let app = Application()
+
+    app.routes.get("/greeting") { _, _ in
+      Response(status: .notFound, headers: [("X-Greeting", ("Hello World"))], content: "Hello")
+    }
+
+    let channel = try! app.start().wait()
+    let client = HTTPClient(eventLoopGroupProvider: .createNew)
+
+    let response = try! client.get(url: "http://localhost:8080/greeting").wait()
+    XCTAssertEqual(response.headers["X-Greeting"], ["Hello World"])
+
+    try! channel.close().wait()
+    try! client.syncShutdown()
+  }
+
   func test_requestHandlerCanReturnPromise() {
     let app = Application()
 

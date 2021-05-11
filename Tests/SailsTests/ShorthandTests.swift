@@ -27,14 +27,6 @@ class ResponseShorthandTests: XCTestCase {
     XCTAssertEqual(readContent(of: response), "hello world")
   }
 
-  func test_buildingResponse_withStatusAndHeadersAndContent_buildsResponseWithAllTheCorrectParts() {
-    let response = Response {
-      Status.ok
-      ("Content-Type", "application/json")
-      "hello world"
-    }
-  }
-
   func readContent(of response: Response) -> String? {
     var buffer = ByteBufferAllocator().buffer(capacity: 0)
     let length = try! response.content.encode(to: &buffer)
