@@ -183,17 +183,27 @@ class SailsTests: XCTestCase {
   func test_requestHandlerCanReturnPromise() {
     let app = Application()
 
+    let sem = DispatchSemaphore(value: 0)
+    var promise: EventLoopPromise<Response>?
     app.routes.get("/greeting") { _, eventLoop in
-      eventLoop.makeSucceededFuture(
-        Response(status: .ok)
-      )
+        promise = eventLoop.makePromise(of: Response.self)
+        sem.signal()
+        return promise!.futureResult
     }
 
     let channel = try! app.start().wait()
     let client = HTTPClient(eventLoopGroupProvider: .createNew)
 
-    let response = try! client.get(url: "http://localhost:8080/greeting").wait()
-    XCTAssertEqual(response.status, .ok)
+    let responseFuture = client.get(url: "http://localhost:8080/greeting")
+    let ex = self.expectation(description: "lol")
+    responseFuture.whenSuccess { response in
+        XCTAssertEqual(response.status, .ok)
+        ex.fulfill()
+    }
+
+    sem.wait()
+    promise?.succeed(Response(status: .ok, content: "lolololololol"))
+    waitForExpectations(timeout: 1.0)
 
     try! channel.close().wait()
     try! client.syncShutdown()

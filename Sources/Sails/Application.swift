@@ -5,13 +5,20 @@ import NIOFoundationCompat
 
 public class Application {
   public let routes = Routes()
+    private let group: EventLoopGroup
 
   public init() {
-    
+    group = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
   }
 
+    func stop() throws {
+        try group.syncShutdownGracefully()
+    }
+
   public func start() -> EventLoopFuture<Channel> {
-    let bootstrap = ServerBootstrap(group: MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount))
+
+    
+    let bootstrap = ServerBootstrap(group: group)
       .serverChannelOption(ChannelOptions.backlog, value: 256)
       .serverChannelOption(ChannelOptions.socket(SocketOptionLevel(SOL_SOCKET), SO_REUSEADDR), value: 1)
       .childChannelInitializer { channel in
