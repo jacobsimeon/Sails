@@ -11,7 +11,7 @@ public class Application {
     group = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
   }
 
-    func stop() throws {
+    public func stop() throws {
         try group.syncShutdownGracefully()
     }
 
