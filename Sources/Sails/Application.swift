@@ -2,25 +2,37 @@ import Foundation
 import NIO
 import NIOHTTP1
 import NIOFoundationCompat
+import OSLog
 
 public class Application {
     public let routes = Routes()
-    private let group: EventLoopGroup
+    private let port: Int
 
-    public init() {
-        group = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
+    private var group: EventLoopGroup?
+    private var channel: Channel?
+    private var bootstrap: ServerBootstrap?
+
+    public init(port: Int = 8080) {
+        self.port = port
     }
 
     public func stop() throws {
-        try group.syncShutdownGracefully()
+        try channel?.close().wait()
+        try group?.syncShutdownGracefully()
+
+        bootstrap = nil
+        group = nil
+        channel = nil
     }
 
-    public func start() -> EventLoopFuture<Channel> {
-        let bootstrap = ServerBootstrap(group: group)
+    public func start() throws {
+        group = MultiThreadedEventLoopGroup(numberOfThreads: 1)
+
+        bootstrap = ServerBootstrap(group: group!)
             .serverChannelOption(ChannelOptions.backlog, value: 256)
             .serverChannelOption(ChannelOptions.socket(SocketOptionLevel(SOL_SOCKET), SO_REUSEADDR), value: 1)
             .childChannelInitializer { channel in
-                channel.pipeline.configureHTTPServerPipeline().flatMap { [weak self] in
+                channel.pipeline.configureHTTPServerPipeline(withErrorHandling: true).flatMap { [weak self] in
                     guard let app = self else {
                         fatalError("Unable to add handler to pipeline because the application is no longer in memory")
                     }
@@ -28,11 +40,11 @@ public class Application {
                     return channel.pipeline.addHandler(app.handler())
                 }
             }
+            .childChannelOption(ChannelOptions.socket(IPPROTO_TCP, TCP_NODELAY), value: 1)
             .childChannelOption(ChannelOptions.socket(SocketOptionLevel(SOL_SOCKET), SO_REUSEADDR), value: 1)
             .childChannelOption(ChannelOptions.maxMessagesPerRead, value: 1)
-            .childChannelOption(ChannelOptions.allowRemoteHalfClosure, value: true)
 
-        return bootstrap.bind(host: "::1", port: 8080)
+        channel = try bootstrap?.bind(host: "::1", port: port).wait()
     }
 
     private func handler() -> FunctionHandler {
@@ -63,8 +75,7 @@ class FunctionHandler: ChannelInboundHandler {
             requestHead = head
         case .body(let buffer):
             requestBody = buffer
-        case .end(_):
-
+        case .end:
             guard let head = requestHead else {
                 return
             }

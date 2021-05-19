@@ -7,7 +7,7 @@ import Foundation
 
 
 class SailsTests: XCTestCase {
-    func test_requestsAreRoutedToCorrectHandler() {
+    func test_requestsAreRoutedToCorrectHandler() throws {
         let app = Application()
         
         app.routes.get("/greeting") { _, _ in
@@ -24,26 +24,26 @@ class SailsTests: XCTestCase {
             }
         }
         
-        let channel = try! app.start().wait()
+        try app.start()
         let client = HTTPClient(eventLoopGroupProvider: .createNew)
         
-        let response = try! client.get(url: "http://localhost:8080/greeting").wait()
+        let response = try client.get(url: "http://localhost:8080/greeting").wait()
         XCTAssertNotNil(response.body)
         var body = response.body!
         let greeting = body.readString(length: body.readableBytes)
         XCTAssertEqual(greeting, "hola")
         
-        let goodbyeResponse = try! client.get(url: "http://localhost:8080/goodbye").wait()
+        let goodbyeResponse = try client.get(url: "http://localhost:8080/goodbye").wait()
         XCTAssertNotNil(goodbyeResponse.body)
         var goodbyeBody = goodbyeResponse.body!
         let goodbye = goodbyeBody.readString(length: goodbyeBody.readableBytes)
         XCTAssertEqual(goodbye, "adieu")
-        
-        try! channel.close().wait()
-        try! client.syncShutdown()
+
+        try app.stop()
+        try client.syncShutdown()
     }
     
-    func test_requestHandlersCanAccessTheRequestBody() {
+    func test_requestHandlersCanAccessTheRequestBody() throws {
         let app = Application()
         
         var tasks: [String?] = []
@@ -54,19 +54,19 @@ class SailsTests: XCTestCase {
             return Response(status: .ok)
         }
         
-        let channel = try! app.start().wait()
+        try app.start()
         let client = HTTPClient(eventLoopGroupProvider: .createNew)
         
-        _ = try! client.post(url: "http://localhost:8080/tasks", body: .string("build a web framework")).wait()
-        _ = try! client.post(url: "http://localhost:8080/tasks", body: .string("build a website")).wait()
+        _ = try client.post(url: "http://localhost:8080/tasks", body: .string("build a web framework")).wait()
+        _ = try client.post(url: "http://localhost:8080/tasks", body: .string("build a website")).wait()
         
         XCTAssertEqual(tasks, ["build a web framework", "build a website"])
         
-        try! channel.close().wait()
-        try! client.syncShutdown()
+        try app.stop()
+        try client.syncShutdown()
     }
     
-    func test_requestHandlersCanAccessRequestHeaders() {
+    func test_requestHandlersCanAccessRequestHeaders() throws {
         let app = Application()
         
         var tokens: [String?] = []
@@ -76,24 +76,24 @@ class SailsTests: XCTestCase {
             return Response(status: .ok)
         }
         
-        let channel = try! app.start().wait()
+        try app.start()
         let client = HTTPClient(eventLoopGroupProvider: .createNew)
         
-        let request = try! HTTPClient.Request(
+        let request = try HTTPClient.Request(
             url: "http://localhost:8080/tasks",
             method: .POST,
             headers: ["Authorization": "token-1"],
             body: .string("body 1")
         )
-        _ = try! client.execute(request: request).wait()
+        _ = try client.execute(request: request).wait()
         
         XCTAssertEqual(tokens, ["token-1"])
         
-        try! channel.close().wait()
-        try! client.syncShutdown()
+        try app.stop()
+        try client.syncShutdown()
     }
     
-    func test_requestHandlersCanReturnData() {
+    func test_requestHandlersCanReturnData() throws {
         let app = Application()
         
         app.routes.get("/greeting") { _, _ in
@@ -103,19 +103,19 @@ class SailsTests: XCTestCase {
             }
         }
         
-        let channel = try! app.start().wait()
+        try app.start()
         let client = HTTPClient(eventLoopGroupProvider: .createNew)
         
-        let response = try! client.get(url: "http://localhost:8080/greeting").wait()
+        let response = try client.get(url: "http://localhost:8080/greeting").wait()
         var body = response.body!
         let bodyString = body.readString(length: body.readableBytes)
         XCTAssertEqual(bodyString, "hello world")
         
-        try! channel.close().wait()
-        try! client.syncShutdown()
+        try app.stop()
+        try client.syncShutdown()
     }
     
-    func test_requestHandlerCanReturnEncodable() {
+    func test_requestHandlerCanReturnEncodable() throws {
         struct Task: Content, Encodable {
             let name: String
         }
@@ -128,85 +128,87 @@ class SailsTests: XCTestCase {
                 Task(name: "build something")
             }
         }
-        
-        let channel = try! app.start().wait()
+
+        try app.start()
         let client = HTTPClient(eventLoopGroupProvider: .createNew)
-        
-        let response = try! client.get(url: "http://localhost:8080/greeting").wait()
-        
+
+        let response = try client.get(url: "http://localhost:8080/greeting").wait()
+
         var body = response.body!
         let bodyString = body.readString(length: body.readableBytes)
-        
+
         let expectedBody = """
-    {"name":"build something"}
-    """
+        {"name":"build something"}
+        """
         XCTAssertEqual(bodyString, expectedBody)
         
-        try! channel.close().wait()
-        try! client.syncShutdown()
+        try app.stop()
+        try client.syncShutdown()
     }
     
-    func test_requestHandlerCanSetResponseStatus() {
+    func test_requestHandlerCanSetResponseStatus() throws {
         let app = Application()
         
         app.routes.get("/greeting") { _, _ in
             Response(status: .notFound)
         }
         
-        let channel = try! app.start().wait()
+        try app.start()
         let client = HTTPClient(eventLoopGroupProvider: .createNew)
         
-        let response = try! client.get(url: "http://localhost:8080/greeting").wait()
+        let response = try client.get(url: "http://localhost:8080/greeting").wait()
         XCTAssertEqual(response.status, .notFound)
         
-        try! channel.close().wait()
-        try! client.syncShutdown()
+        try app.stop()
+        try client.syncShutdown()
     }
     
-    func test_requestHandlerCanSpecifyHeaders() {
+    func test_requestHandlerCanSpecifyHeaders() throws {
         let app = Application()
         
         app.routes.get("/greeting") { _, _ in
             Response(status: .notFound, headers: [("X-Greeting", ("Hello World"))], content: "Hello")
         }
         
-        let channel = try! app.start().wait()
+        try app.start()
         let client = HTTPClient(eventLoopGroupProvider: .createNew)
         
-        let response = try! client.get(url: "http://localhost:8080/greeting").wait()
+        let response = try client.get(url: "http://localhost:8080/greeting").wait()
         XCTAssertEqual(response.headers["X-Greeting"], ["Hello World"])
         
-        try! channel.close().wait()
-        try! client.syncShutdown()
+        try app.stop()
+        try client.syncShutdown()
     }
     
-    func test_requestHandlerCanReturnPromise() {
+    func test_requestHandlerCanReturnPromise() throws {
         let app = Application()
         
-        let sem = DispatchSemaphore(value: 0)
         var promise: EventLoopPromise<Response>?
         app.routes.get("/greeting") { _, eventLoop in
             promise = eventLoop.makePromise(of: Response.self)
-            sem.signal()
             return promise!.futureResult
         }
         
-        let channel = try! app.start().wait()
+        try app.start()
+
         let client = HTTPClient(eventLoopGroupProvider: .createNew)
-        
         let responseFuture = client.get(url: "http://localhost:8080/greeting")
-        let ex = self.expectation(description: "lol")
+
+        let ex = expectation(description: "waiting for response")
         responseFuture.whenSuccess { response in
             XCTAssertEqual(response.status, .ok)
+            var body = response.body!
+            XCTAssertEqual(body.readString(length: body.readableBytes), "lolololololol")
             ex.fulfill()
         }
         
-        sem.wait()
-        promise?.succeed(Response(status: .ok, content: "lolololololol"))
-        waitForExpectations(timeout: 1.0)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            promise?.succeed(Response(status: .ok, content: "lolololololol"))
+        }
+
+        waitForExpectations(timeout: 3.0)
         
-        try! channel.close().wait()
-        try! client.syncShutdown()
+        try app.stop()
+        try client.syncShutdown()
     }
-    
 }
