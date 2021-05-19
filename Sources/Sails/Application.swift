@@ -4,104 +4,102 @@ import NIOHTTP1
 import NIOFoundationCompat
 
 public class Application {
-  public let routes = Routes()
+    public let routes = Routes()
     private let group: EventLoopGroup
 
-  public init() {
-    group = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
-  }
+    public init() {
+        group = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
+    }
 
     public func stop() throws {
         try group.syncShutdownGracefully()
     }
 
-  public func start() -> EventLoopFuture<Channel> {
+    public func start() -> EventLoopFuture<Channel> {
+        let bootstrap = ServerBootstrap(group: group)
+            .serverChannelOption(ChannelOptions.backlog, value: 256)
+            .serverChannelOption(ChannelOptions.socket(SocketOptionLevel(SOL_SOCKET), SO_REUSEADDR), value: 1)
+            .childChannelInitializer { channel in
+                channel.pipeline.configureHTTPServerPipeline().flatMap { [weak self] in
+                    guard let app = self else {
+                        fatalError("Unable to add handler to pipeline because the application is no longer in memory")
+                    }
 
-    
-    let bootstrap = ServerBootstrap(group: group)
-      .serverChannelOption(ChannelOptions.backlog, value: 256)
-      .serverChannelOption(ChannelOptions.socket(SocketOptionLevel(SOL_SOCKET), SO_REUSEADDR), value: 1)
-      .childChannelInitializer { channel in
-        channel.pipeline.configureHTTPServerPipeline().flatMap { [weak self] in
-          guard let app = self else {
-            fatalError("Unable to add handler to pipeline because the application is no longer in memory")
-          }
+                    return channel.pipeline.addHandler(app.handler())
+                }
+            }
+            .childChannelOption(ChannelOptions.socket(SocketOptionLevel(SOL_SOCKET), SO_REUSEADDR), value: 1)
+            .childChannelOption(ChannelOptions.maxMessagesPerRead, value: 1)
+            .childChannelOption(ChannelOptions.allowRemoteHalfClosure, value: true)
 
-          return channel.pipeline.addHandler(app.handler())
-        }
-      }
-      .childChannelOption(ChannelOptions.socket(SocketOptionLevel(SOL_SOCKET), SO_REUSEADDR), value: 1)
-      .childChannelOption(ChannelOptions.maxMessagesPerRead, value: 1)
-      .childChannelOption(ChannelOptions.allowRemoteHalfClosure, value: true)
-
-    return bootstrap.bind(host: "::1", port: 8080)
-  }
-
-  private func handler() -> FunctionHandler {
-    return FunctionHandler() { [weak self] head in
-      self?.routes.handler(for: head)
+        return bootstrap.bind(host: "::1", port: 8080)
     }
-  }
+
+    private func handler() -> FunctionHandler {
+        return FunctionHandler() { [weak self] head in
+            self?.routes.handler(for: head)
+        }
+    }
 }
 
 class FunctionHandler: ChannelInboundHandler {
-  typealias InboundIn = HTTPServerRequestPart
-  typealias OutboundOut = HTTPServerResponsePart
-  typealias GetHandler = (HTTPRequestHead) -> RequestHandler?
+    typealias InboundIn = HTTPServerRequestPart
+    typealias OutboundOut = HTTPServerResponsePart
+    typealias GetHandler = (HTTPRequestHead) -> RequestHandler?
 
-  private let getHandler: GetHandler
-  private var requestHead: HTTPRequestHead?
-  private var requestBody: ByteBuffer?
+    private let getHandler: GetHandler
+    private var requestHead: HTTPRequestHead?
+    private var requestBody: ByteBuffer?
 
-  init(getHandler: @escaping GetHandler) {
-    self.getHandler = getHandler
-  }
-
-  func channelRead(context: ChannelHandlerContext, data: NIOAny) {
-    let part = self.unwrapInboundIn(data)
-
-    switch part {
-    case .head(let head):
-      requestHead = head
-    case .body(let buffer):
-      requestBody = buffer
-    case .end(_):
-
-      guard let head = requestHead else {
-        return
-      }
-
-      guard let handler = getHandler(head) else {
-        return
-      }
-
-      let request = Request(head: head, body: requestBody)
-      let response = handler(request, context.eventLoop)
-      send(response, via: context)
+    init(getHandler: @escaping GetHandler) {
+        self.getHandler = getHandler
     }
-  }
 
-  private func send(_ response: FutureResponse, via context: ChannelHandlerContext) {
-    var buffer = context.channel.allocator.buffer(capacity: 0)
-    response.response(on: context.eventLoop).whenSuccess { response in
-      let contentLength = try! response.content.encode(to: &buffer)
+    func channelRead(context: ChannelHandlerContext, data: NIOAny) {
+        let part = self.unwrapInboundIn(data)
 
-      var headers = response.head.headers
-      headers.add(name: "Content-Length", value: String(contentLength))
+        switch part {
+        case .head(let head):
+            requestHead = head
+        case .body(let buffer):
+            requestBody = buffer
+        case .end(_):
 
-      let head = HTTPServerResponsePart.head(
-        HTTPResponseHead(
-          version: HTTPVersion(major: 1, minor: 1),
-          status: response.head.status,
-            headers: headers
-        )
-      )
+            guard let head = requestHead else {
+                return
+            }
 
-      _ = context.write(self.wrapOutboundOut(head))
+            guard let handler = getHandler(head) else {
+                return
+            }
 
-      context.writeAndFlush(self.wrapOutboundOut(.body(.byteBuffer(buffer)))).whenComplete { (_) in
-        _ = context.close()
-      }
+            let request = Request(head: head, body: requestBody)
+            let response = handler(request, context.eventLoop)
+            send(response, via: context)
+        }
     }
-  }
+
+    private func send(_ response: FutureResponse, via context: ChannelHandlerContext) {
+        var buffer = context.channel.allocator.buffer(capacity: 0)
+        response.response(on: context.eventLoop).whenSuccess { response in
+            let contentLength = try! response.content.encode(to: &buffer)
+
+            var headers = response.head.headers
+            headers.add(name: "Content-Length", value: String(contentLength))
+
+            let head = HTTPServerResponsePart.head(
+                HTTPResponseHead(
+                    version: HTTPVersion(major: 1, minor: 1),
+                    status: response.head.status,
+                    headers: headers
+                )
+            )
+
+            _ = context.write(self.wrapOutboundOut(head))
+
+            context.writeAndFlush(self.wrapOutboundOut(.body(.byteBuffer(buffer)))).whenComplete { (_) in
+                _ = context.close()
+            }
+        }
+    }
 }
