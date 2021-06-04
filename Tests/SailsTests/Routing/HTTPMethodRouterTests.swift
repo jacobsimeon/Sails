@@ -65,4 +65,11 @@ final class HTTPMethodRouterTests: XCTestCase {
         XCTAssertEqual(router.route(.GET, uri: "/posts").value, "GET POSTS")
         XCTAssertEqual(router.route(.POST, uri: "/posts").value, "POST POSTS")
     }
+
+    func test_route_ignoresQueryParams() {
+        let router = HTTPMethodRouter<String>()
+        router.add(.GET, uri: "/posts", value: "GET POSTS")
+
+        XCTAssertEqual(router.route(.GET, uri: "/posts?archived=true").value, "GET POSTS")
+    }
 }

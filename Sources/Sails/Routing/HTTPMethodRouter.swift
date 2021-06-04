@@ -1,4 +1,5 @@
 import NIOHTTP1
+import Foundation
 
 public class HTTPMethodRouter<ValueT> {
     private var routers: [HTTPMethod: Router<ValueT>]
@@ -12,7 +13,8 @@ public class HTTPMethodRouter<ValueT> {
     }
     
     public func route(_ method: HTTPMethod, uri: String) -> RouteResult<ValueT> {
-        return getOrAddRouter(for: method).route(uri: uri)
+        let saneURI = URL(string: uri)?.pathComponents.joined(separator: "/") ?? uri
+        return getOrAddRouter(for: method).route(uri: saneURI)
     }
     
     private func getOrAddRouter(for method: HTTPMethod) -> Router<ValueT> {
