@@ -71,5 +71,8 @@ final class HTTPMethodRouterTests: XCTestCase {
         router.add(.GET, uri: "/posts", value: "GET POSTS")
 
         XCTAssertEqual(router.route(.GET, uri: "/posts?archived=true").value, "GET POSTS")
+
+        router.add(.GET, uri: "/posts", value: "lol")
+        XCTAssertEqual(router.route(.GET, uri: "/posts?archived=true").value, "lol")
     }
 }

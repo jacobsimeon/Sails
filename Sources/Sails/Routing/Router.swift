@@ -11,7 +11,10 @@ class Router<ValueType> {
             return
         }
         
-        let components = uri.split(separator: "/").map(String.init).map(RouteComponent.from)
+        let components = uri.split(separator: "/")
+            .map(String.init)
+            .map(RouteComponent.from)
+
         add(components: components, value: value)
     }
     
@@ -33,6 +36,7 @@ class Router<ValueType> {
             }
             
             if component == components.last {
+                currentNode.value = value
                 currentNode.isTerminal = true
             }
         }

@@ -13,16 +13,25 @@ public class HTTPMethodRouter<ValueT> {
     }
     
     public func route(_ method: HTTPMethod, uri: String) -> RouteResult<ValueT> {
-        let saneURI = URL(string: uri)?.pathComponents.joined(separator: "/") ?? uri
-        return getOrAddRouter(for: method).route(uri: saneURI)
+        return getOrAddRouter(for: method).route(uri: removeQuery(from: uri))
     }
     
     private func getOrAddRouter(for method: HTTPMethod) -> Router<ValueT> {
         if let router = routers[method] {
             return router
         }
-        
-        routers[method] = Router<ValueT>()
-        return routers[method]!
+
+        let router = Router<ValueT>()
+        defer { routers[method] = router }
+
+        return router
+    }
+
+    private func removeQuery(from uri: String) -> String {
+        guard let components = URLComponents(string: uri) else {
+            return uri
+        }
+
+        return components.path
     }
 }
