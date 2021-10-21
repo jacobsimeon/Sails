@@ -211,4 +211,83 @@ class SailsTests: XCTestCase {
         try app.stop()
         try client.syncShutdown()
     }
+
+    func test_bigRequestBody() throws {
+        let requestBody = """
+        Vivamus sagittis lacus vel augue laoreet rutrum faucibus dolor auctor. Cras
+        justo odio, dapibus ac facilisis in, egestas eget quam. Donec sed odio dui.
+        Integer posuere erat a ante venenatis dapibus posuere velit aliquet. Integer
+        posuere erat a ante venenatis dapibus posuere velit aliquet. Nulla vitae elit
+        libero, a pharetra augue.
+
+        Nullam id dolor id nibh ultricies vehicula ut id elit. Vivamus sagittis lacus
+        vel augue laoreet rutrum faucibus dolor auctor. Vivamus sagittis lacus vel augue
+        laoreet rutrum faucibus dolor auctor. Aenean eu leo quam. Pellentesque ornare
+        sem lacinia quam venenatis vestibulum. Cras mattis consectetur purus sit amet
+        fermentum.
+
+        Donec sed odio dui. Nullam id dolor id nibh ultricies vehicula ut id elit. Lorem
+        ipsum dolor sit amet, consectetur adipiscing elit. Nullam id dolor id nibh
+        ultricies vehicula ut id elit. Duis mollis, est non commodo luctus, nisi erat
+        porttitor ligula, eget lacinia odio sem nec elit. Aenean lacinia bibendum nulla
+        sed consectetur. Donec id elit non mi porta gravida at eget metus.
+
+        Morbi leo risus, porta ac consectetur ac, vestibulum at eros. Donec sed odio
+        dui. Vestibulum id ligula porta felis euismod semper. Donec sed odio dui. Donec
+        sed odio dui. Maecenas sed diam eget risus varius blandit sit amet non magna.
+        Integer posuere erat a ante venenatis dapibus posuere velit aliquet.
+
+        Aenean eu leo quam. Pellentesque ornare sem lacinia quam venenatis vestibulum.
+        Etiam porta sem malesuada magna mollis euismod. Vivamus sagittis lacus vel augue
+        laoreet rutrum faucibus dolor auctor. Nulla vitae elit libero, a pharetra augue.
+        Morbi leo risus, porta ac consectetur ac, vestibulum at eros. Vestibulum id
+        ligula porta felis euismod semper.
+
+        Duis mollis, est non commodo luctus, nisi erat porttitor ligula, eget lacinia
+        odio sem nec elit. Vivamus sagittis lacus vel augue laoreet rutrum faucibus
+        dolor auctor. Sed posuere consectetur est at lobortis. Fusce dapibus, tellus ac
+        cursus commodo, tortor mauris condimentum nibh, ut fermentum massa justo sit
+        amet risus.
+
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas faucibus
+        mollis interdum. Aenean lacinia bibendum nulla sed consectetur. Etiam porta sem
+        malesuada magna mollis euismod. Nullam quis risus eget urna mollis ornare vel eu
+        leo.
+
+        Morbi leo risus, porta ac consectetur ac, vestibulum at eros. Maecenas faucibus
+        mollis interdum. Cras mattis consectetur purus sit amet fermentum. Donec
+        ullamcorper nulla non metus auctor fringilla. Cras mattis consectetur purus sit
+        amet fermentum.
+        """
+
+        let app = Application()
+        try app.start()
+
+        let expectARequest = expectation(description: "A request")
+        app.routes.post("/yo") { request, _ in
+            defer {
+                expectARequest.fulfill()
+            }
+
+            var body = request.body!
+            let bodyString = body.readString(length: body.readableBytes)
+            XCTAssertEqual(bodyString, requestBody)
+
+            return Response {
+                HTTPResponseStatus.ok
+                "yo"
+            }
+        }
+
+        let client = HTTPClient(eventLoopGroupProvider: .createNew)
+        _ = client.post(
+            url: "http://localhost:8080/yo",
+            body: .string(requestBody)
+        )
+
+        wait(for: [expectARequest], timeout: 1)
+
+        try app.stop()
+        try client.syncShutdown()
+    }
 }
