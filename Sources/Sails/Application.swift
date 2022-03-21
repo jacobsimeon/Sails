@@ -12,6 +12,8 @@ public class Application {
     private var channel: Channel?
     private var bootstrap: ServerBootstrap?
 
+    private var requestsMap: [RequestMade: Int] = [:]
+
     public init(port: Int = 8080) {
         self.port = port
     }
@@ -49,8 +51,20 @@ public class Application {
 
     private func handler() -> FunctionHandler {
         return FunctionHandler() { [weak self] head in
-            self?.routes.handler(for: head)
+            guard let self = self else {
+                fatalError("Unable to add handler to pipeline because the application is no longer in memory")
+            }
+
+            self.requestsMap[RequestMade(method: Method.init(rawValue: head.method), uri: head.uri), default: 0] += 1
+
+            return self.routes.handler(for: head)
         }
+    }
+}
+
+extension Application: Verifier {
+    public func verify(_ method: Method, _ uri: String) -> Int {
+        requestsMap[RequestMade(method: method, uri: uri), default: 0]
     }
 }
 
