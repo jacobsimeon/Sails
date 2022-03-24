@@ -21,7 +21,7 @@ class VerifierTests: XCTestCase {
         try client.syncShutdown()
     }
 
-    func test_verify__noRequestsHaveBeenMade__returnZero() throws {
+    func test_verify__noRequestsHaveBeenMade__verifierFails() throws {
         subject.routes.get("/greeting") { _, _ in
             Response(status: Status.ok, content: "hola")
         }
@@ -29,11 +29,15 @@ class VerifierTests: XCTestCase {
             Response(status: .ok)
         }
 
-        XCTAssertEqual(subject.verify(Method.GET, "/greeting"), 0)
-        XCTAssertEqual(subject.verify(Method.POST, "/task"), 0)
+        XCTExpectFailure("The following requests were not made; verification will fail") {
+            subject.verify(Method.GET, "/greeting")
+            subject.verify(Method.GET, "/greeting", times: 100)
+            subject.verify(Method.POST, "/task")
+            subject.verify(Method.POST, "/task", times: 100)
+        }
     }
 
-    func test_verify__requestsHaveBeenMade__verifierReturnsNumberOfCalls() throws {
+    func test_verify__requestsHaveBeenMade__verifierPassesTest() throws {
         subject.routes.get("/greeting") { _, _ in
             Response(status: Status.ok, content: "hola")
         }
@@ -45,7 +49,7 @@ class VerifierTests: XCTestCase {
         _ = try client.post(url: "http://localhost:8080/tasks", body: .string("build a web framework")).wait()
         _ = try client.get(url: "http://localhost:8080/greeting").wait()
 
-        XCTAssertEqual(subject.verify(Method.GET, "/greeting"), 2)
-        XCTAssertEqual(subject.verify(Method.POST, "/tasks"), 1)
+        subject.verify(Method.GET, "/greeting", times: 2)
+        subject.verify(Method.POST, "/tasks", times: 1)
     }
 }

@@ -4,6 +4,8 @@ import NIOHTTP1
 import NIOFoundationCompat
 import OSLog
 
+import XCTest
+
 public class Application {
     public let routes = Routes()
     private let port: Int
@@ -63,8 +65,16 @@ public class Application {
 }
 
 extension Application: Verifier {
-    public func verify(_ method: Method, _ uri: String) -> Int {
-        requestsMap[RequestMade(method: method, uri: uri), default: 0]
+    public func verify(_ method: Method, _ uri: String, times: UInt? = nil, file: StaticString = #filePath, line: UInt = #line) {
+        let callCount = requestsMap[RequestMade(method: method, uri: uri), default: 0]
+        if let times = times, times != callCount {
+            XCTFail("Expected to receive request \(method) \(uri) \(times) times but it was sent \(callCount) times", file: file, line: line)
+            return
+        }
+
+        if callCount < 1 {
+            XCTFail("Unable to verify request \(method) \(uri)\t", file: file, line: line)
+        }
     }
 }
 
@@ -131,7 +141,9 @@ class FunctionHandler: ChannelInboundHandler {
 
             let keepAlive = self.requestHead?.isKeepAlive == true
             context.writeAndFlush(self.wrapOutboundOut(.end(nil))).whenComplete { _ in
-                if !keepAlive { context.close(promise: nil) }
+                if !keepAlive {
+                    context.close(promise: nil)
+                }
             }
         }
     }

@@ -19,8 +19,9 @@ try server.start()
 
 ### Verifying Requests
 
-Sails has the ability to determine whether or not a request was made to it. Let's look at the following example. Here
-we have a UI test that validates pull to refresh.
+Sails has the ability to determine whether a request was made to it. Let's look at the following example. Here we have 
+a UI test that validates pull to refresh. You can also pass in the number of times you expect a request - by default, 
+it will expect at least one call.
 
 ```swift
 import XCTest
@@ -66,9 +67,18 @@ class PullToRefreshTests: XCTestCase {
 
         listView.itemView(matching: "Updated Item 1").wait()
         listView.itemView(matching: "Updated Item 2").wait()
+        
+        // Verify a request was made
+        server.verify(.POST, "/graphql")
 
         // Ensure that only one request was made to POST /graphql
-        XCTAssertEqual(server.verify(.POST, "/graphql"), 1)
+//        XCTAssertEqual(server.verify(.POST, "/graphql"), 1)
+    
+        // Inversely, we can also ensure requests were not made
+        XCTExpectFailure("Ensure following requests were not made") {
+            subject.verify(Method.GET, "/greeting")
+            subject.verify(Method.POST, "/task")
+        }
     }
 }
 ```

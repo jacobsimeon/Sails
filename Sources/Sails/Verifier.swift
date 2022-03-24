@@ -5,5 +5,5 @@
 import Foundation
 
 public protocol Verifier {
-    func verify(_ method: Method, _ uri: String) -> Int
+    func verify(_ method: Method, _ uri: String, times: UInt?, file: StaticString, line: UInt)
 }
