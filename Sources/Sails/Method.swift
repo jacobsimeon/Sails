@@ -17,3 +17,12 @@ public enum Method {
         }
     }
 }
+
+extension Method: CustomStringConvertible {
+    public var description: String {
+        switch self {
+        case .GET: return "GET"
+        case .POST: return "POST"
+        }
+    }
+}

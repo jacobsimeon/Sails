@@ -6,17 +6,27 @@ written in Swift.
 ## Usage
 -----------------
 
-Simply import Sails into your UI test, new up an `Application`, configure some endpoints, and start the server.
+Simply import Sails into your UI test, new up an `Application`, register some endpoints, and start the server.
 
 ```swift
 import Sails
 
 let server = Application()
+// register requests
 server.routes.post("/graphql") { request, _ in
     Response(status: .ok)
 }
 try server.start()
 ```
+
+Here we are registering a `POST` request to `localhost:8080/graphql` to respond with a 200 status code.
+
+### Unregistered requests
+
+Sails can also be a useful tool for auditing existing HTTP requests your iOS app is making. By default, Sails will 
+respond to requests not registered with a 404 and will log the following:
+
+`Uh oh! Sails has received an unregistered POST request from /some/uri`
 
 ### Verifying Requests
 
