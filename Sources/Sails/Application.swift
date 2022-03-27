@@ -87,6 +87,7 @@ class FunctionHandler: ChannelInboundHandler {
         switch part {
         case .head(let head):
             requestHead = head
+            requestBody = nil
         case .body(var buffer):
             if requestBody == nil {
                 requestBody = buffer
