@@ -117,22 +117,21 @@ class FunctionHandler: ChannelInboundHandler {
             }
 
             let contentLength = try! response.content.encode(to: &buffer)
-
             var headers = response.head.headers
             headers.add(name: "Content-Length", value: String(contentLength))
 
-            let head = HTTPServerResponsePart.head(
-                HTTPResponseHead(
-                    version: HTTPVersion(major: 1, minor: 1),
-                    status: response.head.status,
-                    headers: headers
-                )
+            let head = HTTPResponseHead(
+                version: HTTPVersion(major: 1, minor: 1),
+                status: response.head.status,
+                headers: headers
             )
 
-            _ = context.write(self.wrapOutboundOut(head))
+            context.write(self.wrapOutboundOut(.head(head)), promise: nil)
+            context.write(self.wrapOutboundOut(.body(.byteBuffer(buffer))), promise: nil)
 
-            context.writeAndFlush(self.wrapOutboundOut(.body(.byteBuffer(buffer)))).whenComplete { (_) in
-                _ = context.close()
+            let keepAlive = self.requestHead?.isKeepAlive == true
+            context.writeAndFlush(self.wrapOutboundOut(.end(nil))).whenComplete { _ in
+                if !keepAlive { context.close(promise: nil) }
             }
         }
     }
