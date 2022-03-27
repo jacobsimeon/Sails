@@ -111,7 +111,11 @@ class FunctionHandler: ChannelInboundHandler {
 
     private func send(_ response: FutureResponse, via context: ChannelHandlerContext) {
         var buffer = context.channel.allocator.buffer(capacity: 0)
-        response.response(on: context.eventLoop).whenSuccess { response in
+        response.response(on: context.eventLoop).whenSuccess { [weak self] response in
+            guard let self = self else {
+                return
+            }
+
             let contentLength = try! response.content.encode(to: &buffer)
 
             var headers = response.head.headers
