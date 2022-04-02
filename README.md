@@ -98,7 +98,7 @@ dependencies: [
 ## Contributing
 -----------------
 
-Want to contribute to this repository? Check out [Contributing Guidelines](https://github.com/jacobsimeon/Sails/blob/main/CONTRIBUTING.md)
+Want to contribute to this repository? Check out [Contributing Guidelines](https://github.com/jacobsimeon/Sails/blob/master/CONTRIBUTING.md)
 
 ## License
 -----------------
