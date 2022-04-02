@@ -92,3 +92,7 @@ dependencies: [
     .package(url: "https://github.com/jacobsimeon/Sails", from: "1.0.0")
 ]
 ```
+
+## License
+
+Sails is released under the [MIT License](LICENSE.md).
