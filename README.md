@@ -4,6 +4,7 @@ Sails is a lightweight, configurable mock server built to run alongside UI Tests
 written in Swift.
 
 ## Usage
+-----------------
 
 Simply import Sails into your UI test, new up an `Application`, configure some endpoints, and start the server.
 
@@ -84,6 +85,7 @@ class PullToRefreshTests: XCTestCase {
 ```
 
 ## Installation
+-----------------
 
 ### Swift Package Manager
 
@@ -93,6 +95,12 @@ dependencies: [
 ]
 ```
 
+## Contributing
+-----------------
+
+Want to contribute to this repository? Check out [Contributing Guidelines](https://github.com/jacobsimeon/Sails/blob/main/CONTRIBUTING.md)
+
 ## License
+-----------------
 
 Sails is released under the [MIT License](LICENSE.md).
