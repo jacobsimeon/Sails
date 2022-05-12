@@ -3,9 +3,8 @@
 //
 
 import Foundation
-import NIOHTTP1
 
-struct RequestMade {
+public struct RequestMade {
     let method: Method
     let uri: String
 }

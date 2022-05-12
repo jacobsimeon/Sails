@@ -4,7 +4,7 @@ import AsyncHTTPClient
 
 @testable import Sails
 
-class VerifierTests: XCTestCase {
+class LogableTests: XCTestCase {
     var subject: Application!
 
     var mockLogger: MockLogger!
@@ -24,39 +24,7 @@ class VerifierTests: XCTestCase {
         try client.syncShutdown()
     }
 
-    func test_verify__noRequestsHaveBeenMade__verifierFails() throws {
-        subject.routes.get("/greeting") { _, _ in
-            Response(status: Status.ok, content: "hola")
-        }
-        subject.routes.post("/tasks") { _, _ in
-            Response(status: .ok)
-        }
-
-        XCTExpectFailure("The following requests were not made; verification will fail") {
-            subject.verify(Method.GET, "/greeting")
-            subject.verify(Method.GET, "/greeting", times: 100)
-            subject.verify(Method.POST, "/task")
-            subject.verify(Method.POST, "/task", times: 100)
-        }
-    }
-
-    func test_verify__requestsHaveBeenMade__verifierPassesTest() throws {
-        subject.routes.get("/greeting") { _, _ in
-            Response(status: Status.ok, content: "hola")
-        }
-        subject.routes.post("/tasks") { request, _ in
-            Response(status: .ok)
-        }
-
-        _ = try client.get(url: "http://localhost:8080/greeting").wait()
-        _ = try client.post(url: "http://localhost:8080/tasks", body: .string("build a web framework")).wait()
-        _ = try client.get(url: "http://localhost:8080/greeting").wait()
-
-        subject.verify(Method.GET, "/greeting", times: 2)
-        subject.verify(Method.POST, "/tasks", times: 1)
-    }
-
-    func test_error__willExecuteForRequestsNotRegistered() throws {
+    func test_error_willExecuteForRequestsNotRegistered() throws {
         subject.routes.get("/greeting") { _, _ in
             Response(status: Status.ok, content: "hola")
         }
